@@ -1,0 +1,153 @@
+// Define the boundary variable (max EVI year long)
+// Google Earth Engine
+var boundary = ee.FeatureCollection("users/gismania1/Bighorn_Parameter"),
+    imageVisParam = {"opacity":0.01,"gamma":0.1};
+    
+// Load Landsat 8 ImageCollection
+var landsat8 = ee.ImageCollection('LANDSAT/LC08/C02/T1_TOA')
+                 .filterDate('2024-01-01', '2024-12-31') // Example date range
+                 .filterBounds(boundary)
+                 .filter(ee.Filter.lt('CLOUD_COVER', 20)); // Landsat 8 uses 'CLOUD_COVER'
+
+// Function to calculate EVI
+var calculateEVI = function(image) {
+  var evi = image.expression(
+    '2.5 * ((NIR - RED) / (NIR + C1 * RED - C2 * BLUE + L))', {
+      'NIR': image.select('B5'), // NIR band for Landsat 8
+      'RED': image.select('B4'), // Red band for Landsat 8
+      'BLUE': image.select('B2'), // Blue band for Landsat 8
+      'C1': 6,
+      'C2': 7.5,
+      'L': 1
+    }).rename('EVI');
+  return image.addBands(evi);
+};
+
+// Function to calculate NDVI
+var calculateNDVI = function(image) {
+  var ndvi = image.normalizedDifference(['B5', 'B4']).rename('NDVI'); // NIR (B5) and Red (B4) bands for Landsat 8
+  return image.addBands(ndvi);
+};
+
+// Function to calculate NBR
+var calculateNBR = function(image) {
+  var nbr = image.normalizedDifference(['B5', 'B7']).rename('NBR'); // NIR (B5) and SWIR (B7) bands for Landsat 8
+  return image.addBands(nbr);
+};
+
+// Apply the NDVI calculation function to the Landsat 8 collection
+var landsat8_with_ndvi = landsat8.map(calculateNDVI);
+
+// Apply the EVI calculation function to the Landsat 8 collection
+var landsat8_with_evi = landsat8.map(calculateEVI);
+
+// Apply the NBR calculation function to the Landsat 8 collection
+var landsat8_with_nbr = landsat8.map(calculateNBR);
+
+// Calculate mean EVI for the time period
+var mean_evi = landsat8_with_evi.select('EVI').mean().clip(boundary);
+var max_evi = landsat8_with_evi.select('EVI').max().clip(boundary);
+var mean_ndvi = landsat8_with_ndvi.select('NDVI').mean().clip(boundary);
+var max_ndvi = landsat8_with_ndvi.select('NDVI').max().clip(boundary);
+var mean_nbr = landsat8_with_nbr.select('NBR').mean().clip(boundary);
+var max_nbr = landsat8_with_nbr.select('NBR').max().clip(boundary);
+
+// Define visualization parameters for EVI
+var eviVis = {
+  min: 0,
+  max: 1,
+  palette: ['blue', 'white', 'green']
+};
+
+var ndviVis = {
+  min: -1,
+  max: 1,
+  palette: ['blue', 'white', 'green']
+};
+
+var nbrVis = {
+  min: -1,
+  max: 1,
+  palette: ['blue', 'white', 'green']
+};
+
+// Add the EVI layer to the map
+Map.centerObject(boundary, 10);
+Map.addLayer(mean_evi, eviVis, 'Mean EVI');
+Map.addLayer(max_evi, eviVis, 'Max EVI');
+Map.addLayer(mean_ndvi, ndviVis, 'Mean NDVI');
+Map.addLayer(max_ndvi, ndviVis, 'Max NDVI');
+Map.addLayer(mean_nbr, nbrVis, 'Mean NBR');
+Map.addLayer(max_nbr, nbrVis, 'Max NBR');
+
+// Print out some information about the dataset
+print('Mean EVI:', mean_evi);
+print('Mean NDVI:', mean_ndvi);
+print('Mean NBR:', mean_nbr);
+print('Max NBR:', max_nbr);
+
+// Export the mean EVI image to Google Drive
+Export.image.toDrive({
+  image: mean_evi,
+  description: 'EVI_mean_Landsat_Bighorn_2024',
+  scale: 30, // Landsat 8 has a 30m resolution
+  folder: 'Landsat_Bighorn_2020',
+  region: boundary.geometry(),
+  fileFormat: 'GeoTIFF',
+  maxPixels: 1e13
+});
+
+// Export the mean EVI image to Google Drive
+Export.image.toDrive({
+  image: max_evi,
+  description: 'EVI_max_Landsat_Bighorn_2024',
+  scale: 30, // Landsat 8 has a 30m resolution
+  folder: 'Landsat_Bighorn_2020',
+  region: boundary.geometry(),
+  fileFormat: 'GeoTIFF',
+  maxPixels: 1e13
+});
+
+// Export the mean NDVI image to Google Drive
+Export.image.toDrive({
+  image: mean_ndvi,
+  description: 'NDVI_mean_Landsat_Bighorn_2024',
+  scale: 30, // Landsat 8 has a 30m resolution
+  folder: 'Landsat_Bighorn_2020',
+  region: boundary.geometry(),
+  fileFormat: 'GeoTIFF',
+  maxPixels: 1e13
+});
+
+// Export the mean NDVI image to Google Drive
+Export.image.toDrive({
+  image: max_ndvi,
+  description: 'NDVI_max_Landsat_Bighorn_2024',
+  scale: 30, // Landsat 8 has a 30m resolution
+  folder: 'Landsat_Bighorn_2020',
+  region: boundary.geometry(),
+  fileFormat: 'GeoTIFF',
+  maxPixels: 1e13
+});
+
+// Export the mean NBR image to Google Drive
+Export.image.toDrive({
+  image: mean_nbr,
+  description: 'NBR_mean_Landsat_Bighorn_2024',
+  scale: 30, // Landsat 8 has a 30m resolution
+  folder: 'Landsat_Bighorn_2020',
+  region: boundary.geometry(),
+  fileFormat: 'GeoTIFF',
+  maxPixels: 1e13
+});
+
+// Export the max NBR image to Google Drive
+Export.image.toDrive({
+  image: max_nbr,
+  description: 'NBR_max_Landsat_Bighorn_2024',
+  scale: 30, // Landsat 8 has a 30m resolution
+  folder: 'Landsat_Bighorn_2020',
+  region: boundary.geometry(),
+  fileFormat: 'GeoTIFF',
+  maxPixels: 1e13
+});
